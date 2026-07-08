@@ -158,8 +158,11 @@
         <div id="adminSection" class="hidden p-6">
             <div id="adminLogin" class="space-y-4">
                 <h3 class="text-center font-bold text-gray-700 mb-2">請輸入管理者密碼</h3>
-                <input type="password" id="adminPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-center">
-                <button onclick="checkAdminPassword()" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg hover:bg-emerald-700 transition">登入</button>
+                <input type="password" id="adminPassword" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-center">
+                <button id="adminLoginBtn" onclick="checkAdminPassword()" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg hover:bg-emerald-700 transition">
+                    登入
+                </button>
                 <p id="adminError" class="text-red-500 text-sm text-center hidden">密碼錯誤</p>
             </div>
 
@@ -173,6 +176,19 @@
                         <button onclick="downloadChart('dailyChart', '每日入班人數趨勢.png')" class="w-full bg-indigo-500 text-white font-semibold py-2 rounded-lg hover:bg-indigo-600 transition text-sm shadow">📊 下載長條圖</button>
                         <button onclick="downloadChart('gradeChart', '各年級入班比例.png')" class="w-full bg-purple-500 text-white font-semibold py-2 rounded-lg hover:bg-purple-600 transition text-sm shadow">🥧 下載圓餅圖</button>
                         <button onclick="downloadChart('ratingChart', '晨讀評價統計.png')" class="w-full col-span-2 bg-pink-500 text-white font-semibold py-2 rounded-lg hover:bg-pink-600 transition text-sm shadow">⭐ 下載評價圖表</button>
+                    </div>
+                </div>
+
+                <!-- 🔑 線上修改密碼區塊 -->
+                <div class="border-t pt-5 border-gray-200">
+                    <h3 class="font-bold text-gray-700 text-lg mb-3">🔑 修改管理者密碼</h3>
+                    <div class="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner">
+                        <input type="password" id="oldPassword" placeholder="請輸入原密碼" class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                        <input type="password" id="newPassword" placeholder="請輸入新密碼" class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                        <input type="password" id="confirmPassword" placeholder="請再次輸入新密碼" class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                        <button id="changePwdBtn" onclick="changeAdminPassword()" class="w-full bg-gray-800 text-white font-semibold py-2 rounded hover:bg-gray-900 transition text-sm">
+                            儲存新密碼
+                        </button>
                     </div>
                 </div>
 
@@ -428,19 +444,83 @@
             if(id==='dailyChart')dailyChartInstance=newChart; else if(id==='gradeChart')gradeChartInstance=newChart; else ratingChartInstance=newChart;
         }
 
-        /* ================= 管理者：登入與匯出 ================= */
-        function checkAdminPassword() {
+        /* ================= 管理者：登入與修改密碼 ================= */
+        async function checkAdminPassword() {
             const pwd = document.getElementById('adminPassword').value;
-            if (pwd === 'admin') {
-                document.getElementById('adminLogin').classList.add('hidden');
-                document.getElementById('adminPanel').classList.remove('hidden');
-                if (!dailyChartInstance) loadStats(); // 背景載入圖表
-                loadAdminTable(); // 載入資料管理表格
-            } else {
-                document.getElementById('adminError').classList.remove('hidden');
+            const btn = document.getElementById('adminLoginBtn');
+            const errorMsg = document.getElementById('adminError');
+            
+            if(!pwd) return;
+            
+            btn.disabled = true;
+            btn.textContent = '驗證中...';
+            errorMsg.classList.add('hidden');
+
+            try {
+                // 向後端請求驗證密碼
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'verifyPassword', password: pwd }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    document.getElementById('adminLogin').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    document.getElementById('adminPassword').value = ''; // 清空密碼框
+                    if (!dailyChartInstance) loadStats();
+                    loadAdminTable();
+                } else {
+                    errorMsg.textContent = result.message;
+                    errorMsg.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorMsg.textContent = '網路連線異常，請檢查連線';
+                errorMsg.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登入';
             }
         }
-        
+
+        async function changeAdminPassword() {
+            const oldPwd = document.getElementById('oldPassword').value;
+            const newPwd = document.getElementById('newPassword').value;
+            const confirmPwd = document.getElementById('confirmPassword').value;
+
+            if (!oldPwd || !newPwd || !confirmPwd) return alert('請填寫完整密碼欄位！');
+            if (newPwd !== confirmPwd) return alert('新密碼與確認密碼不一致！');
+
+            const btn = document.getElementById('changePwdBtn');
+            btn.disabled = true;
+            btn.textContent = '儲存中...';
+
+            try {
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'changePassword', oldPassword: oldPwd, newPassword: newPwd }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert('密碼修改成功！請牢記您的新密碼。');
+                    document.getElementById('oldPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else {
+                    alert('修改失敗：' + result.message);
+                }
+            } catch (err) {
+                alert('網路連線異常，請檢查連線');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '儲存新密碼';
+            }
+        }
+
+        /* ================= 管理者：匯出 ================= */
         async function exportData() {
             try {
                 alert('正在撈取完整資料，這可能需要幾秒鐘的時間...');
