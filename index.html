@@ -176,7 +176,7 @@
                     </div>
                 </div>
 
-                <!-- 🗂️ 資料編修區塊 (新增) -->
+                <!-- 🗂️ 資料編修區塊 -->
                 <div class="border-t pt-5 border-gray-200">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-gray-700 text-lg">🗂️ 資料管理 (編修/刪除)</h3>
@@ -259,8 +259,8 @@
     </div>
 
     <script>
-        // ⚠️ 請在這裡貼上您部署 Google Apps Script 後取得的 Web App URL
-        const GAS_API_URL = '請將此處替換為您的_GAS_網址';
+        // ⚠️ 已經為您設定好正確的 GAS 網址！
+        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxXHokfvYOkKdEI8t80oOaTCccGTs7z02xqrSlpQfPUcmtpeCUolytD0EFWVcbGWcmn/exec';
 
         // 預設日期設定
         document.getElementById('readDate').valueAsDate = new Date();
@@ -268,7 +268,7 @@
         let base64Photo = "";
         let isCompressing = false;
         let dailyChartInstance, gradeChartInstance, ratingChartInstance;
-        let adminDataList = []; // 儲存管理者撈回來的完整資料清單
+        let adminDataList = [];
 
         /* ================= 星級評分邏輯 ================= */
         const stars = document.querySelectorAll('#starContainer span');
@@ -388,7 +388,6 @@
         }
 
         /* ================= 統計邏輯 ================= */
-        // (省略與之前完全相同、未更動的圖表畫製程式碼以節省空間，請保持原樣運作)
         async function loadStats() {
             document.getElementById('statsLoader').classList.remove('hidden');
             document.getElementById('chartsContainer').classList.add('hidden');
@@ -445,7 +444,7 @@
         async function exportData() {
             try {
                 alert('正在撈取完整資料，這可能需要幾秒鐘的時間...');
-                const response = await fetch(GAS_API_URL + "?action=adminLoad"); // 改用 adminLoad 以取得所有資料
+                const response = await fetch(GAS_API_URL + "?action=adminLoad"); 
                 const result = await response.json();
                 if (result.status === 'success') downloadCSV(result.data);
                 else alert('匯出失敗：' + result.message);
@@ -462,7 +461,7 @@
             a.download=`晨讀紀錄_${new Date().toISOString().slice(0,10)}.csv`; a.click();
         }
 
-        function downloadChart(id, name) { /* 與先前相同 */
+        function downloadChart(id, name) { 
             const canvas = document.getElementById(id); if(!canvas)return;
             const ctx=canvas.getContext('2d'); ctx.save(); ctx.globalCompositeOperation='destination-over'; ctx.fillStyle='white'; ctx.fillRect(0,0,canvas.width,canvas.height);
             const a=document.createElement('a'); a.href=canvas.toDataURL('image/png',1.0); a.download=name; a.click(); ctx.restore();
@@ -470,7 +469,6 @@
 
         /* ================= 管理者：表格讀取、編輯 (Update) 與刪除 (Delete) ================= */
         
-        // 載入表格資料
         async function loadAdminTable() {
             const loader = document.getElementById('tableLoader');
             const tbody = document.getElementById('adminTableBody');
@@ -481,7 +479,7 @@
                 const response = await fetch(GAS_API_URL + "?action=adminLoad");
                 const result = await response.json();
                 if (result.status === 'success') {
-                    adminDataList = result.data; // 儲存至全域變數供編輯使用
+                    adminDataList = result.data; 
                     renderTableHTML(adminDataList);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-red-500">載入失敗</td></tr>`;
@@ -493,7 +491,6 @@
             }
         }
 
-        // 渲染 HTML 表格
         function renderTableHTML(data) {
             const tbody = document.getElementById('adminTableBody');
             if (data.length === 0) {
@@ -501,13 +498,11 @@
                 return;
             }
             
-            // 將資料反轉，讓最新的顯示在最上面
             const reversedData = [...data].reverse();
             
             let html = '';
             reversedData.forEach(item => {
-                // 簡化顯示的時間格式
-                let shortDate = item.readDate.substring(5); // 取 MM-DD
+                let shortDate = item.readDate.substring(5); 
                 html += `
                     <tr class="hover:bg-blue-50 transition">
                         <td class="px-3 py-2 text-xs">${shortDate}</td>
@@ -523,12 +518,10 @@
             tbody.innerHTML = html;
         }
 
-        // 刪除功能
         async function deleteRecord(rowIndex) {
             if (!confirm('⚠️ 確定要刪除這筆紀錄嗎？刪除後無法復原。')) return;
             
             try {
-                // 顯示簡單的 loading 狀態
                 document.getElementById('adminTableBody').innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">刪除中，請稍候...</td></tr>`;
                 
                 const payload = { action: 'delete', rowIndex: rowIndex };
@@ -539,7 +532,7 @@
                 
                 if (result.status === 'success') {
                     alert('刪除成功！');
-                    loadAdminTable(); // 重新載入表格
+                    loadAdminTable(); 
                 } else alert('刪除失敗：' + result.message);
             } catch (err) {
                 alert('執行失敗，請檢查網路連線。');
@@ -547,9 +540,7 @@
             }
         }
 
-        // 開啟編輯 Modal 並填入資料
         function openEditModal(rowIndex) {
-            // 從 adminDataList 找到對應的列資料
             const rowData = adminDataList.find(d => d.rowIndex === rowIndex);
             if (!rowData) return alert('找不到資料');
 
@@ -569,7 +560,6 @@
             document.getElementById('editModal').classList.add('hidden');
         }
 
-        // 儲存編輯功能
         async function saveEdit() {
             const btn = document.getElementById('saveEditBtn');
             const loader = document.getElementById('saveEditLoader');
@@ -598,7 +588,7 @@
                 
                 if (result.status === 'success') {
                     closeEditModal();
-                    loadAdminTable(); // 重新載入表格
+                    loadAdminTable(); 
                 } else alert('更新失敗：' + result.message);
             } catch (err) {
                 alert('執行失敗，請檢查網路連線。');
