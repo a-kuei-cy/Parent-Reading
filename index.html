@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>興嘉國小 - 家長入班晨讀打卡系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #10b981;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        .small-loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .star-rating span { transition: color 0.2s; }
+    </style>
+</head>
+<body class="bg-emerald-50 min-h-screen py-8 px-4 font-sans text-gray-800 relative">
+
+    <div class="max-w-lg mx-auto bg-white rounded-2xl shadow-lg overflow-hidden relative z-10">
+        <!-- Header -->
+        <div class="bg-emerald-600 px-6 py-6 text-center text-white">
+            <h1 class="text-2xl font-bold tracking-wider">興嘉國小</h1>
+            <p class="text-emerald-100 mt-2 text-sm">家長入班晨讀打卡系統</p>
+        </div>
+
+        <!-- 頁籤 (Tabs) -->
+        <div class="flex border-b border-gray-200">
+            <button id="tabFormBtn" onclick="switchTab('form')" class="flex-1 py-3 text-center font-semibold text-emerald-700 border-b-2 border-emerald-600 transition">
+                📝 打卡
+            </button>
+            <button id="tabStatsBtn" onclick="switchTab('stats')" class="flex-1 py-3 text-center font-semibold text-gray-500 border-b-2 border-transparent hover:text-emerald-600 transition">
+                📊 統計
+            </button>
+            <button id="tabAdminBtn" onclick="switchTab('admin')" class="flex-1 py-3 text-center font-semibold text-gray-500 border-b-2 border-transparent hover:text-emerald-600 transition">
+                ⚙️ 管理
+            </button>
+        </div>
+
+        <!-- ================= 表單區塊 ================= -->
+        <div id="formSection" class="block">
+            <form id="checkinForm" class="p-6 space-y-5">
+                <!-- 班級 -->
+                <div>
+                    <label for="className" class="block text-sm font-medium text-gray-700 mb-1">班級 <span class="text-red-500">*</span></label>
+                    <input type="text" id="className" name="className" placeholder="例如：1年1班 或 101" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                </div>
+                <!-- 學生姓名 -->
+                <div>
+                    <label for="studentName" class="block text-sm font-medium text-gray-700 mb-1">學生姓名 <span class="text-red-500">*</span></label>
+                    <input type="text" id="studentName" name="studentName" placeholder="請輸入學生姓名" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                </div>
+                <!-- 家長姓名 -->
+                <div>
+                    <label for="parentName" class="block text-sm font-medium text-gray-700 mb-1">家長姓名 <span class="text-red-500">*</span></label>
+                    <input type="text" id="parentName" name="parentName" placeholder="請輸入家長姓名" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                </div>
+                <!-- 入班日期 -->
+                <div>
+                    <label for="readDate" class="block text-sm font-medium text-gray-700 mb-1">入班日期 <span class="text-red-500">*</span></label>
+                    <input type="date" id="readDate" name="readDate" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                </div>
+                <!-- 閱讀書籍 -->
+                <div>
+                    <label for="bookTitle" class="block text-sm font-medium text-gray-700 mb-1">閱讀書籍 <span class="text-red-500">*</span></label>
+                    <input type="text" id="bookTitle" name="bookTitle" placeholder="請輸入書名" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                </div>
+                <!-- 星級評分 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">給予本次晨讀評價 <span class="text-red-500">*</span></label>
+                    <div class="flex space-x-2 text-3xl text-gray-300 star-rating select-none" id="starContainer">
+                        <span class="cursor-pointer hover:text-yellow-400" data-value="1">★</span>
+                        <span class="cursor-pointer hover:text-yellow-400" data-value="2">★</span>
+                        <span class="cursor-pointer hover:text-yellow-400" data-value="3">★</span>
+                        <span class="cursor-pointer hover:text-yellow-400" data-value="4">★</span>
+                        <span class="cursor-pointer hover:text-yellow-400" data-value="5">★</span>
+                    </div>
+                    <input type="hidden" id="rating" name="rating" value="">
+                </div>
+                <!-- 回饋心得 -->
+                <div>
+                    <label for="feedback" class="block text-sm font-medium text-gray-700 mb-1">回饋心得 <span class="text-red-500">*</span> <span class="text-xs text-gray-500 font-normal ml-1">(簡短一句話)</span></label>
+                    <textarea id="feedback" name="feedback" rows="2" placeholder="請用簡短一句話分享您的心得..." required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"></textarea>
+                </div>
+                <!-- 照片上傳 -->
+                <div>
+                    <label for="photo" class="block text-sm font-medium text-gray-700 mb-1">晨讀照片 <span class="text-xs text-gray-400 font-normal ml-1">(選填)</span></label>
+                    <input type="file" id="photo" name="photo" accept="image/*"
+                        class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition">
+                    <div id="previewContainer" class="mt-3 hidden">
+                        <img id="imagePreview" class="w-full h-48 object-cover rounded-lg border border-gray-200" src="" alt="預覽照片">
+                    </div>
+                </div>
+                <!-- 提交按鈕 -->
+                <button type="submit" id="submitBtn" 
+                    class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-300 transition flex items-center justify-center space-x-2">
+                    <span id="btnText">送出打卡資料</span>
+                    <div id="btnLoader" class="loader hidden"></div>
+                </button>
+            </form>
+
+            <div id="successMessage" class="hidden p-8 text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">打卡成功！</h2>
+                <p class="text-gray-600 mb-6">感謝您的參與，已將晨讀紀錄儲存。</p>
+                <button onclick="resetForm()" class="bg-emerald-100 text-emerald-700 font-semibold py-2 px-6 rounded-lg hover:bg-emerald-200 transition">返回重新填寫</button>
+            </div>
+        </div>
+
+        <!-- ================= 統計區塊 ================= -->
+        <div id="statsSection" class="hidden p-6">
+            <div id="statsLoader" class="flex flex-col items-center justify-center py-10">
+                <div class="loader mb-4"></div><p class="text-gray-500">載入最新統計資料中...</p>
+            </div>
+            <div id="chartsContainer" class="hidden space-y-8">
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
+                    <h3 class="text-center font-bold text-gray-700 mb-4">📅 每天入班人數趨勢</h3>
+                    <div class="relative h-60 w-full"><canvas id="dailyChart"></canvas></div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
+                    <h3 class="text-center font-bold text-gray-700 mb-4">🏫 各年級入班比例</h3>
+                    <div class="relative h-60 w-full flex justify-center"><canvas id="gradeChart"></canvas></div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
+                    <h3 class="text-center font-bold text-gray-700 mb-4">⭐ 晨讀評價統計</h3>
+                    <div class="relative h-60 w-full flex justify-center"><canvas id="ratingChart"></canvas></div>
+                </div>
+                <button onclick="loadStats()" class="w-full mt-4 bg-gray-100 text-gray-600 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition">重新整理數據</button>
+            </div>
+        </div>
+
+        <!-- ================= 管理者區塊 ================= -->
+        <div id="adminSection" class="hidden p-6">
+            <div id="adminLogin" class="space-y-4">
+                <h3 class="text-center font-bold text-gray-700 mb-2">請輸入管理者密碼</h3>
+                <input type="password" id="adminPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-center">
+                <button onclick="checkAdminPassword()" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg hover:bg-emerald-700 transition">登入</button>
+                <p id="adminError" class="text-red-500 text-sm text-center hidden">密碼錯誤</p>
+            </div>
+
+            <div id="adminPanel" class="hidden space-y-6">
+                <!-- 匯出與圖表功能 -->
+                <div class="space-y-3">
+                    <button onclick="exportData()" class="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition shadow">
+                        <span>📄 匯出完整打卡資料 (CSV)</span>
+                    </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="downloadChart('dailyChart', '每日入班人數趨勢.png')" class="w-full bg-indigo-500 text-white font-semibold py-2 rounded-lg hover:bg-indigo-600 transition text-sm shadow">📊 下載長條圖</button>
+                        <button onclick="downloadChart('gradeChart', '各年級入班比例.png')" class="w-full bg-purple-500 text-white font-semibold py-2 rounded-lg hover:bg-purple-600 transition text-sm shadow">🥧 下載圓餅圖</button>
+                        <button onclick="downloadChart('ratingChart', '晨讀評價統計.png')" class="w-full col-span-2 bg-pink-500 text-white font-semibold py-2 rounded-lg hover:bg-pink-600 transition text-sm shadow">⭐ 下載評價圖表</button>
+                    </div>
+                </div>
+
+                <!-- 🗂️ 資料編修區塊 (新增) -->
+                <div class="border-t pt-5 border-gray-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-gray-700 text-lg">🗂️ 資料管理 (編修/刪除)</h3>
+                        <button onclick="loadAdminTable()" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-3 rounded shadow-sm flex items-center space-x-1 transition">
+                            <span>重新載入</span>
+                            <div id="tableLoader" class="small-loader hidden"></div>
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto bg-gray-50 border border-gray-200 rounded-lg shadow-inner max-h-80 overflow-y-auto">
+                        <table class="min-w-full text-sm text-left whitespace-nowrap">
+                            <thead class="bg-gray-200 text-gray-600 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2">時間/日期</th>
+                                    <th class="px-3 py-2">班級</th>
+                                    <th class="px-3 py-2">學生</th>
+                                    <th class="px-3 py-2 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminTableBody" class="divide-y divide-gray-200">
+                                <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">請點擊「重新載入」讀取資料</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 編輯資料彈出視窗 (Modal) ================= -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-blue-600 px-4 py-3 text-white font-bold flex justify-between items-center">
+                <span>✏️ 編輯打卡資料</span>
+                <button onclick="closeEditModal()" class="text-white hover:text-gray-200 text-xl leading-none">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto space-y-4">
+                <input type="hidden" id="editRowIndex">
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">班級</label>
+                    <input type="text" id="editClassName" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">學生姓名</label>
+                        <input type="text" id="editStudentName" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">家長姓名</label>
+                        <input type="text" id="editParentName" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">入班日期</label>
+                        <input type="date" id="editReadDate" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">星級評分 (1-5)</label>
+                        <input type="number" min="1" max="5" id="editRating" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">閱讀書籍</label>
+                    <input type="text" id="editBookTitle" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">回饋心得</label>
+                    <textarea id="editFeedback" rows="2" class="w-full px-3 py-1.5 border rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"></textarea>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t">
+                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition text-sm font-semibold">取消</button>
+                <button onclick="saveEdit()" id="saveEditBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-semibold flex items-center space-x-1">
+                    <span id="saveEditText">儲存修改</span>
+                    <div id="saveEditLoader" class="small-loader hidden" style="border-top-color: white;"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ 請在這裡貼上您部署 Google Apps Script 後取得的 Web App URL
+        const GAS_API_URL = '請將此處替換為您的_GAS_網址';
+
+        // 預設日期設定
+        document.getElementById('readDate').valueAsDate = new Date();
+        
+        let base64Photo = "";
+        let isCompressing = false;
+        let dailyChartInstance, gradeChartInstance, ratingChartInstance;
+        let adminDataList = []; // 儲存管理者撈回來的完整資料清單
+
+        /* ================= 星級評分邏輯 ================= */
+        const stars = document.querySelectorAll('#starContainer span');
+        const ratingInput = document.getElementById('rating');
+
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const value = this.getAttribute('data-value');
+                ratingInput.value = value;
+                stars.forEach(s => {
+                    if (s.getAttribute('data-value') <= value) {
+                        s.classList.add('text-yellow-400'); s.classList.remove('text-gray-300');
+                    } else {
+                        s.classList.remove('text-yellow-400'); s.classList.add('text-gray-300');
+                    }
+                });
+            });
+        });
+
+        function resetStars() {
+            ratingInput.value = "";
+            stars.forEach(s => { s.classList.remove('text-yellow-400'); s.classList.add('text-gray-300'); });
+        }
+
+        /* ================= 頁籤切換邏輯 ================= */
+        function switchTab(tab) {
+            const sections = ['formSection', 'statsSection', 'adminSection'];
+            const btns = ['tabFormBtn', 'tabStatsBtn', 'tabAdminBtn'];
+            
+            sections.forEach(sec => document.getElementById(sec).classList.add('hidden'));
+            btns.forEach(btn => document.getElementById(btn).className = "flex-1 py-3 text-center font-semibold text-gray-500 border-b-2 border-transparent hover:text-emerald-600 transition");
+
+            document.getElementById(tab + 'Section').classList.remove('hidden');
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Btn').className = "flex-1 py-3 text-center font-semibold text-emerald-700 border-b-2 border-emerald-600 transition";
+
+            if (tab === 'stats') loadStats();
+        }
+
+        /* ================= 表單新增 (Create) ================= */
+        document.getElementById('photo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) { base64Photo = ""; document.getElementById('previewContainer').classList.add('hidden'); return; }
+            isCompressing = true;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('imagePreview').src = event.target.result;
+                document.getElementById('previewContainer').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+            compressImage(file, 1024, function(compressedBase64) {
+                base64Photo = compressedBase64; isCompressing = false;
+            });
+        });
+
+        document.getElementById('checkinForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!document.getElementById('rating').value) { alert('請點擊星星，給予本次晨讀評價！'); return; }
+            if (isCompressing) { alert('照片處理中，請稍候幾秒再送出喔！'); return; }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true; submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            document.getElementById('btnText').textContent = '資料上傳中...';
+            document.getElementById('btnLoader').classList.remove('hidden');
+
+            const payload = {
+                action: 'create', // 明確指定為建立
+                className: document.getElementById('className').value,
+                studentName: document.getElementById('studentName').value,
+                parentName: document.getElementById('parentName').value,
+                readDate: document.getElementById('readDate').value,
+                bookTitle: document.getElementById('bookTitle').value,
+                rating: document.getElementById('rating').value,      
+                feedback: document.getElementById('feedback').value,  
+                photoBase64: base64Photo
+            };
+
+            try {
+                const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    document.getElementById('checkinForm').classList.add('hidden');
+                    document.getElementById('successMessage').classList.remove('hidden');
+                } else alert('發生錯誤：' + result.message);
+            } catch (error) { alert('上傳失敗，請檢查網路連線或稍後再試。'); } 
+            finally {
+                submitBtn.disabled = false; submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                document.getElementById('btnText').textContent = '送出打卡資料';
+                document.getElementById('btnLoader').classList.add('hidden');
+            }
+        });
+
+        function resetForm() {
+            document.getElementById('checkinForm').reset();
+            document.getElementById('readDate').valueAsDate = new Date();
+            document.getElementById('previewContainer').classList.add('hidden');
+            base64Photo = ""; resetStars();
+            document.getElementById('checkinForm').classList.remove('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+
+        function compressImage(file, maxSize, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width, height = img.height;
+                    if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } } 
+                    else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width; canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    callback(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /* ================= 統計邏輯 ================= */
+        // (省略與之前完全相同、未更動的圖表畫製程式碼以節省空間，請保持原樣運作)
+        async function loadStats() {
+            document.getElementById('statsLoader').classList.remove('hidden');
+            document.getElementById('chartsContainer').classList.add('hidden');
+            try {
+                const response = await fetch(GAS_API_URL);
+                const result = await response.json();
+                if (result.status === 'success') processAndRenderCharts(result.data);
+                else alert('載入統計資料失敗：' + result.message);
+            } catch (error) { alert('無法取得統計資料。'); } 
+            finally {
+                document.getElementById('statsLoader').classList.add('hidden');
+                document.getElementById('chartsContainer').classList.remove('hidden');
+            }
+        }
+        function extractGrade(c){ if(!c)return'未分類';let s=String(c).trim();const m={'1':'一','2':'二','3':'三','4':'四','5':'五','6':'六','１':'一','２':'二','３':'三','４':'四','５':'五','６':'六','一':'一','二':'二','三':'三','四':'四','五':'五','六':'六'};let y=s.match(/([1-6１-６一二三四五六])\s*年/);if(y)return m[y[1]]+'年級';let d=s.match(/^([1-6１-６])\d{2}/);if(d)return m[d[1]]+'年級';let a=s.match(/([1-6１-６一二三四五六])/);if(a)return m[a[1]]+'年級';return'未分類';}
+        function processAndRenderCharts(data) {
+            const daily={}, grade={}, rating={'5':0,'4':0,'3':0,'2':0,'1':0};
+            data.forEach(i => {
+                if(!i.date||!i.className)return; let d=new Date(i.date); if(isNaN(d.getTime()))return;
+                let dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                daily[dateStr]=(daily[dateStr]||0)+1;
+                let g=extractGrade(i.className); grade[g]=(grade[g]||0)+1;
+                if(i.rating){ let r=String(i.rating); if(rating[r]!==undefined) rating[r]++; }
+            });
+            const sD=Object.keys(daily).sort(), dD=sD.map(d=>daily[d]);
+            const gO=['一年級','二年級','三年級','四年級','五年級','六年級','未分類'];
+            const sG=Object.keys(grade).sort((a,b)=>gO.indexOf(a)-gO.indexOf(b)), gD=sG.map(g=>grade[g]);
+            const rL=['5顆星','4顆星','3顆星','2顆星','1顆星'], rD=[rating['5'],rating['4'],rating['3'],rating['2'],rating['1']];
+            renderChart('dailyChart','bar',sD,[{label:'入班人數',data:dD,backgroundColor:'rgba(16,185,129,0.7)'}]);
+            renderChart('gradeChart','doughnut',sG,[{data:gD,backgroundColor:['#059669','#10b981','#34d399','#6ee7b7','#a7f3d0','#d1fae5','#cbd5e1']}]);
+            renderChart('ratingChart','polarArea',rL,[{data:rD,backgroundColor:['rgba(16,185,129,0.8)','rgba(52,211,153,0.8)','rgba(251,191,36,0.8)','rgba(248,113,113,0.8)','rgba(239,68,68,0.8)']}]);
+        }
+        function renderChart(id,type,labels,datasets){
+            const ctx=document.getElementById(id).getContext('2d');
+            let instance = id==='dailyChart'?dailyChartInstance:id==='gradeChart'?gradeChartInstance:ratingChartInstance;
+            if(instance) instance.destroy();
+            const newChart = new Chart(ctx,{ type:type, data:{labels:labels,datasets:datasets}, options:{responsive:true,maintainAspectRatio:false} });
+            if(id==='dailyChart')dailyChartInstance=newChart; else if(id==='gradeChart')gradeChartInstance=newChart; else ratingChartInstance=newChart;
+        }
+
+        /* ================= 管理者：登入與匯出 ================= */
+        function checkAdminPassword() {
+            const pwd = document.getElementById('adminPassword').value;
+            if (pwd === 'admin') {
+                document.getElementById('adminLogin').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                if (!dailyChartInstance) loadStats(); // 背景載入圖表
+                loadAdminTable(); // 載入資料管理表格
+            } else {
+                document.getElementById('adminError').classList.remove('hidden');
+            }
+        }
+        
+        async function exportData() {
+            try {
+                alert('正在撈取完整資料，這可能需要幾秒鐘的時間...');
+                const response = await fetch(GAS_API_URL + "?action=adminLoad"); // 改用 adminLoad 以取得所有資料
+                const result = await response.json();
+                if (result.status === 'success') downloadCSV(result.data);
+                else alert('匯出失敗：' + result.message);
+            } catch (error) { alert('連線失敗，請檢查網路。'); }
+        }
+
+        function downloadCSV(data) {
+            if (!data || data.length === 0) { alert('無資料'); return; }
+            const hN = { timestamp:'打卡時間',className:'班級',studentName:'學生姓名',parentName:'家長姓名',readDate:'入班日期',bookTitle:'閱讀書籍',rating:'評分',feedback:'心得',photoUrl:'照片連結' };
+            const keys = ['timestamp','className','studentName','parentName','readDate','bookTitle','rating','feedback','photoUrl'];
+            let csv = '\uFEFF' + keys.map(k=>hN[k]).join(',') + '\n';
+            data.forEach(r => { csv += keys.map(k=>`"${(''+(r[k]||'')).replace(/"/g,'""')}"`).join(',') + '\n'; });
+            const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+            a.download=`晨讀紀錄_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+        }
+
+        function downloadChart(id, name) { /* 與先前相同 */
+            const canvas = document.getElementById(id); if(!canvas)return;
+            const ctx=canvas.getContext('2d'); ctx.save(); ctx.globalCompositeOperation='destination-over'; ctx.fillStyle='white'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            const a=document.createElement('a'); a.href=canvas.toDataURL('image/png',1.0); a.download=name; a.click(); ctx.restore();
+        }
+
+        /* ================= 管理者：表格讀取、編輯 (Update) 與刪除 (Delete) ================= */
+        
+        // 載入表格資料
+        async function loadAdminTable() {
+            const loader = document.getElementById('tableLoader');
+            const tbody = document.getElementById('adminTableBody');
+            loader.classList.remove('hidden');
+            tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">載入中...</td></tr>`;
+            
+            try {
+                const response = await fetch(GAS_API_URL + "?action=adminLoad");
+                const result = await response.json();
+                if (result.status === 'success') {
+                    adminDataList = result.data; // 儲存至全域變數供編輯使用
+                    renderTableHTML(adminDataList);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-red-500">載入失敗</td></tr>`;
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-red-500">網路錯誤</td></tr>`;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        // 渲染 HTML 表格
+        function renderTableHTML(data) {
+            const tbody = document.getElementById('adminTableBody');
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">目前尚無資料</td></tr>`;
+                return;
+            }
+            
+            // 將資料反轉，讓最新的顯示在最上面
+            const reversedData = [...data].reverse();
+            
+            let html = '';
+            reversedData.forEach(item => {
+                // 簡化顯示的時間格式
+                let shortDate = item.readDate.substring(5); // 取 MM-DD
+                html += `
+                    <tr class="hover:bg-blue-50 transition">
+                        <td class="px-3 py-2 text-xs">${shortDate}</td>
+                        <td class="px-3 py-2 font-medium">${item.className}</td>
+                        <td class="px-3 py-2">${item.studentName}</td>
+                        <td class="px-3 py-2 text-center space-x-1">
+                            <button onclick="openEditModal(${item.rowIndex})" class="bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded text-xs font-semibold transition">編輯</button>
+                            <button onclick="deleteRecord(${item.rowIndex})" class="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs font-semibold transition">刪除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // 刪除功能
+        async function deleteRecord(rowIndex) {
+            if (!confirm('⚠️ 確定要刪除這筆紀錄嗎？刪除後無法復原。')) return;
+            
+            try {
+                // 顯示簡單的 loading 狀態
+                document.getElementById('adminTableBody').innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">刪除中，請稍候...</td></tr>`;
+                
+                const payload = { action: 'delete', rowIndex: rowIndex };
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert('刪除成功！');
+                    loadAdminTable(); // 重新載入表格
+                } else alert('刪除失敗：' + result.message);
+            } catch (err) {
+                alert('執行失敗，請檢查網路連線。');
+                loadAdminTable();
+            }
+        }
+
+        // 開啟編輯 Modal 並填入資料
+        function openEditModal(rowIndex) {
+            // 從 adminDataList 找到對應的列資料
+            const rowData = adminDataList.find(d => d.rowIndex === rowIndex);
+            if (!rowData) return alert('找不到資料');
+
+            document.getElementById('editRowIndex').value = rowData.rowIndex;
+            document.getElementById('editClassName').value = rowData.className;
+            document.getElementById('editStudentName').value = rowData.studentName;
+            document.getElementById('editParentName').value = rowData.parentName;
+            document.getElementById('editReadDate').value = rowData.readDate;
+            document.getElementById('editRating').value = rowData.rating;
+            document.getElementById('editBookTitle').value = rowData.bookTitle;
+            document.getElementById('editFeedback').value = rowData.feedback;
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // 儲存編輯功能
+        async function saveEdit() {
+            const btn = document.getElementById('saveEditBtn');
+            const loader = document.getElementById('saveEditLoader');
+            const txt = document.getElementById('saveEditText');
+            
+            btn.disabled = true; btn.classList.add('opacity-75');
+            txt.textContent = '儲存中...'; loader.classList.remove('hidden');
+
+            const payload = {
+                action: 'update',
+                rowIndex: document.getElementById('editRowIndex').value,
+                className: document.getElementById('editClassName').value,
+                studentName: document.getElementById('editStudentName').value,
+                parentName: document.getElementById('editParentName').value,
+                readDate: document.getElementById('editReadDate').value,
+                rating: document.getElementById('editRating').value,
+                bookTitle: document.getElementById('editBookTitle').value,
+                feedback: document.getElementById('editFeedback').value
+            };
+
+            try {
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    closeEditModal();
+                    loadAdminTable(); // 重新載入表格
+                } else alert('更新失敗：' + result.message);
+            } catch (err) {
+                alert('執行失敗，請檢查網路連線。');
+            } finally {
+                btn.disabled = false; btn.classList.remove('opacity-75');
+                txt.textContent = '儲存修改'; loader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
